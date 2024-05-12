@@ -339,6 +339,7 @@ window.onload = function () {
                 // 创建dd元素
                 var ddNode = document.createElement('dd');
                 ddNode.innerText = crumbData[i].data[j].type;
+                ddNode.setAttribute('price',crumbData[i].data[j].changePrice);
 
                 // 让dl来追加dd
                 dlNode.appendChild(ddNode);
@@ -359,10 +360,24 @@ window.onload = function () {
          * 测试完毕之后在对应dl第一行下标的前面再嵌套一个for循环，目的在变换下标
          * 2. 循坏所有的dd元素并且添加点击事件
          * 3. 确定实际发生事件的目标源对象设置其文字颜色为红色，然后给其他所有的元素颜色都重置为基础色（#666）
+         * ==========================================================================================
+         * 
+         * 点击dd之后产生的mark标记
+         * 思路：
+         * 1. 首先来创建一个可以容纳点击的dd元素值的容器（数组），确定数组的起始长度,再添加一些默认值
+         * 2. 然后再将点击的dd元素的值按照对应下标来写入到数组的身上
+         * 
          */
 
         // 1. 找第一个dl下所有的dd元素
         var dlNodes = document.querySelectorAll('#wrapper #content .contentMain #center .right .rightBottom .chooseWrap dl');
+
+        var arr = new Array(dlNodes.length);
+
+        var choose = document.querySelector('#wrapper #content .contentMain #center .right .rightBottom .choose');
+
+        arr.fill(0);
+
 
         for (var i = 0; i < dlNodes.length; i++) {
 
@@ -377,6 +392,9 @@ window.onload = function () {
                         // this：表示哪一个元素真实的发生了事件
                         // console.log(this)
 
+                        // 清空choose元素
+                        choose.innerText = "";
+
                         for (var k = 0; k < ddNodes.length; k++) {
                             ddNodes[k].style.color = "#666";
                         }
@@ -385,6 +403,70 @@ window.onload = function () {
                         // ddNodes[1].style.color = "red";
                         // 相同下标的dd元素的字体颜色，再进行覆盖操作，而其他未点击的元素都是在进行重新设置颜色
                         this.style.color = "red";
+
+                        // 点击哪一个dd元素动态的产生一个新的mark标记元素
+                        arr[i] = this;
+
+                        changePriceBind(arr);  //实参
+
+                        // 遍历arr数组，将非0元素的值写入到mark标记
+                        arr.forEach(function(value,index) {
+                            // 只要是真的条件，咱们就动态的来创建mark标签
+                            if(value) {
+                                // 创建div元素
+                                var markDiv = document.createElement('div');
+                                // 并且设置class属性
+                                markDiv.className = 'mark';
+                                // 并且设置值
+                                markDiv.innerText = value.innerText;
+                                // 创建a元素
+                                var aNode = document.createElement('a');
+                                // 并且设置值
+                                aNode.innerText = 'X';
+                                // 并且设置下标
+                                aNode.setAttribute('index',index);
+                                // 让div追加a
+                                markDiv.appendChild(aNode);
+
+                                // 让choose元素追加div
+                                choose.appendChild(markDiv);
+                            }
+
+                        })
+
+                        // 获取所有的a标签元素，并且循环发生点击事件
+                        var aNodes = document.querySelectorAll('#wrapper #content .contentMain #center .right .rightBottom .choose .mark a');
+                        console.log(aNodes)
+
+                        for(var n = 0;n < aNodes.length;n++) {
+                            aNodes[n].onclick = function() {
+                                // 获取点击的a标签身上的index属性值
+                                var idx1 = this.getAttribute('index');
+                                
+                                // 恢复数组中对应下标元素的值
+                                arr[idx1] = 0;
+
+                                // 查找对应下标的哪个dl行中的所有dd元素
+                                var ddlist = dlNodes[idx1].querySelectorAll('dd');
+
+                                // 遍历所有的dd元素
+                                for(var m = 0;m < ddlist.length;m++) {
+                                    // 其余所有的dd文字颜色为灰色
+                                    ddlist[m].style.color = '#666';
+                                }
+
+                                // 默认的第一个dd文字颜色恢复成红色
+                                ddlist[0].style.color = 'red';
+
+                                // 删除对应下标位置的mark标记
+                                choose.removeChild(this.parentNode);
+
+                                // 调用价格函数
+                                changePriceBind(arr);
+                            }
+                        }
+
+
                     }
                 }
             })(i)
@@ -392,6 +474,171 @@ window.onload = function () {
 
         }
 
+    }
+
+    // 价格变动的函数声明
+    /**
+     * 这个函数是需要在点击dd的时候以及删除mark标记的时候才需要调用
+     */
+    function changePriceBind(arr) {
+        /**
+         * 思路：
+         * 1. 获取价格的标签元素
+         * 2. 给每一个dd标签身上默认都设置一个自定义的属性，用来记录变化的价格
+         * 3. 遍历arr数组，将dd元素身上的新变化的价格和已有的价格（5299）相加
+         * 4. 最后将计算之后的结果重新渲染到p标签中
+         */
+
+        // 1. 原价格标签元素
+        var oldPrice = document.querySelector('#wrapper #content .contentMain #center .right .rightTop .priceWrap .priceTop .price p');
+
+        // 取出默认的价格
+        var price = goodData.goodsDetail.price;
+
+        // 2. 遍历arr数组
+        for(var i = 0;i < arr.length;i++) {
+            if(arr[i]) {
+                // 数据类型的强制转换
+                var changeprice = Number(arr[i].getAttribute('price'));
+                // 最终价格
+                price += changeprice;
+            }
+        }
+
+        oldPrice.innerText = price;
+
+        // 3. 将变化后的价格写入到左侧标签中
+        var leftprice = document.querySelector('#wrapper #content .contentMain .goodsDetailWrap .rightDetail .chooseBox .listWrap .left p');
+
+        leftprice.innerText = '¥' + price;
+
+        // 4. 遍历选择搭配中所有的复选框元素，看是否有选中的
+        var ipts = document.querySelectorAll('#wrapper #content .contentMain .goodsDetailWrap .rightDetail .chooseBox .listWrap .middle li input');
+
+        var newprice = document.querySelector('#wrapper #content .contentMain .goodsDetailWrap .rightDetail .chooseBox .listWrap .right i');
+
+        for(var j = 0;j < ipts.length;j++) {
+            if(ipts[j].checked) {
+                price += Number(ipts[j].value);
+            }
+        }
+
+        // 5. 右侧的套餐价价格重新渲染
+        newprice.innerText = '¥' + price;
+
+    }
+
+    // 选择搭配中间区域复选框选中套餐价格变动效果
+    chooseprice();
+    function chooseprice() {
+        /**
+         * 思路：
+         * 1. 先获取中间区域中所有的复选框元素
+         * 2. 遍历这些元素取出他们的价格，和左侧的基础价格进行累加，累加之后重新写回套餐价标签里面
+         */
+
+        // 1. 先获取复选框元素
+        var ipts = document.querySelectorAll('#wrapper #content .contentMain .goodsDetailWrap .rightDetail .chooseBox .listWrap .middle li input');
+        var leftprice = document.querySelector('#wrapper #content .contentMain .goodsDetailWrap .rightDetail .chooseBox .listWrap .left p');
+        var newprice = document.querySelector('#wrapper #content .contentMain .goodsDetailWrap .rightDetail .chooseBox .listWrap .right i');
+        // 2. 遍历这些复选框
+        for(var i = 0; i < ipts.length;i++) {
+            ipts[i].onclick = function() {
+                var oldprice = Number(leftprice.innerText.slice(1));
+                for(var j = 0; j < ipts.length;j++) {
+                    if(ipts[j].checked) {
+
+                        // 新的价格 = 左侧价格 + 选中复选框附加价格
+                        oldprice = oldprice + Number(ipts[j].value);
+                    }
+                }
+
+                // 3. 重新写回到套餐价标签中
+                newprice.innerText = '¥' + oldprice;
+            }
+        }
+    }
+
+    // 封装一个公共的选项卡函数
+    /**
+     * 1. 被点击的元素  tabBtns
+     * 2. 被切换显示的元素  tabConts
+     */
+    function Tab(tabBtns,tabConts) {
+        for(var i = 0;i < tabBtns.length;i++) {
+            tabBtns[i].index = i;
+            tabBtns[i].onclick = function() {
+                for(var j = 0;j < tabBtns.length;j++) {
+                    tabBtns[j].className = '';
+                    tabConts[j].className = '';
+                }
+                this.className = 'active';
+                tabConts[this.index].className = 'active';
+            }
+        }
+
+    }
+
+    // 点击左侧选项卡
+    leftTab();
+    function leftTab() {
+        // 被点击的元素
+        var h4s = document.querySelectorAll('#wrapper #content .contentMain .goodsDetailWrap .leftAside .asideTop h4');
+        // 被切换显示的元素
+        var divs = document.querySelectorAll('#wrapper #content .contentMain .goodsDetailWrap .leftAside .aslideContent > div')
+        // 调用函数与
+        Tab(h4s,divs)
+    }
+
+    // 点击右侧选项卡
+    rightTab();
+    function rightTab() {
+        // 被点击的元素
+        var lis = document.querySelectorAll('#wrapper #content .contentMain .goodsDetailWrap .rightDetail .BottomDetail .tabBtns li');
+        // 被切换的显示元素
+        var divs = document.querySelectorAll('#wrapper #content .contentMain .goodsDetailWrap .rightDetail .BottomDetail .tabContents div')
+        // 调用函数
+        Tab(lis,divs);
+    }
+
+    // 右边侧边栏的点击效果
+    rightAsideBind();
+    function rightAsideBind() {
+        /**
+         * 思路：
+         * 1. 先找到按钮元素，发生点击事件
+         * 2. 记录一个初始的状态，在点击事件的内部进行判断,如果为关闭则展开，否则为关闭（状态取反）
+         * 3. 如果为展开，则需要设置按钮和侧边栏对应的class效果，关闭亦如此
+         */
+
+        // 1. 找按钮元素
+        var btns = document.querySelector('#wrapper .rightAside .btns');
+
+        // 记录初始状态
+        var flag = true;  //关闭
+
+        // 查找侧边栏元素
+        var rightAside = document.querySelector('#wrapper .rightAside');
+
+        // 2. 发生点击事件
+        btns.onclick = function() {
+
+            // 判断
+            if(flag) {
+                // 展开
+                btns.className = "btns btnsOpen"
+
+                rightAside.className = "rightAside asideOpen";
+            }else {
+                // 关闭
+                btns.className = "btns btnsClose"
+
+                rightAside.className = "rightAside asideClose";
+            }
+
+            // 无论前面的if和else执行的到底是谁，最终flag的状态都是在原来的基础之上进行取反
+            flag = !flag;
+        }
     }
 }
 
